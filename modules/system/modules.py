@@ -9,13 +9,13 @@ class Modules(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.group()
-    async def module(self, ctx):
+    @commands.group(name='module')
+    async def module_group(self, ctx):
         if ctx.invoked_subcommand is None:
             await ctx.send('Invalid Module command.')
 
-    @module.command()
-    async def load(self, ctx, name: str):
+    @module_group.command(name='load')
+    async def module_load(self, ctx, name: str):
         try:
             self.bot.load_extension(module_dir+"."+name)
 
@@ -27,8 +27,8 @@ class Modules(commands.Cog):
             print(f'Failed to load module {name}')
             traceback.print_exc()
 
-    @module.command()
-    async def unload(self, ctx, name: str):
+    @module_group.command(name='unload')
+    async def module_unload(self, ctx, name: str):
         try:
             self.bot.unload_extension(module_dir+"."+name)
 
@@ -40,8 +40,8 @@ class Modules(commands.Cog):
 
             traceback.print_exc()
 
-    @module.command()
-    async def reload(self, ctx, name: str):
+    @module_group.command(name='reload')
+    async def module_reload(self, ctx, name: str):
         try:
             self.bot.reload_extension(module_dir+"."+name)
 
