@@ -6,12 +6,14 @@ class Reddit(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.regex_sub = re.compile(r'(?:^|[^\w])(/r/[^\s/]+)/?(?:$|\s)')
+        self.regex_user = re.compile(r'(?:^|[^\w])(/u/[^\s/]+)/?(?:$|\s)')
 
     @commands.Cog.listener()
     async def on_message(self, message):
 
         if '/r/' in message.content:
-            subs = re.findall('/r/[^\s]+', message.content)
+            subs = self.regex_sub.findall(message.content)
 
             em = {
                 "color": 0x519cff,
@@ -21,7 +23,7 @@ class Reddit(commands.Cog):
             await message.channel.send(embed=discord.Embed.from_dict(em))
 
         if '/u/' in message.content:
-            users = re.findall('/u/[^\s]+', message.content)
+            users = self.regex_user.findall(message.content)
 
             em = {
                 "color": 0x519cff,
