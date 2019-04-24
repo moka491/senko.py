@@ -6,12 +6,15 @@ from voice.FFmpegPCMPipeStream import FFmpegPCMPipeStream
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.stream = None
 
     @commands.command()
     async def play(self, ctx, *, query):
         """Plays a file from the local filesystem"""
+        self.stream = FFmpegPCMPipeStream(query, self.bot)
+        # todo: await aiohttp stream here
 
-        source = discord.PCMVolumeTransformer(FFmpegPCMPipeStream(query, self.bot))
+        source = discord.PCMVolumeTransformer(self.stream)
         ctx.voice_client.play(source)
 
         await ctx.send('Now playing: {}'.format(query))
@@ -28,6 +31,11 @@ class Music(commands.Cog):
 
     @commands.command()
     async def stop(self, ctx):
+
+        if self.stream is not None:
+            self.stream.stop()
+            self.stream = None
+
         """Stops and disconnects the bot from voice"""
         await ctx.voice_client.disconnect()
 

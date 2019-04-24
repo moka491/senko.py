@@ -9,17 +9,19 @@ class FFmpegPCMPipeStream(AudioSource):
 
     def __init__(self, source, bot):
         self.source = source
-        self.process = None
         self.bot = bot
 
+        self.ffmpeg = None
+        self.streamtask = None
+
         try:
-            self.process = (
+            self.ffmpeg = (
                 ffmpeg
-                .input('pipe:', stimeout=10000)
+                .input('pipe:')
                 .output('pipe:', format='s16le', ac=2, ar='48k')
                 .run_async(pipe_stdin=True, pipe_stdout=True)
             )
-            self.bot.loop.create_task(self.stream_file(source))
+            self.streamtask = self.bot.loop.create_task(self.stream_file(source))
 
         except Exception:  # todo
             pass
@@ -28,10 +30,11 @@ class FFmpegPCMPipeStream(AudioSource):
         async with aiohttp.ClientSession() as session:
             async with session.get(source) as response:
                 async for data in response.content.iter_any():
-                    self.process.stdin.write(data)
+                    self.ffmpeg.stdin.write(data)
 
     def read(self):
-        ret = self.process.stdout.read(OpusEncoder.FRAME_SIZE)
+        ret = self.ffmpeg.stdout.read(OpusEncoder.FRAME_SIZE)
+        print(len(ret))
         if len(ret) != OpusEncoder.FRAME_SIZE:
             return b''
         return ret
@@ -39,7 +42,7 @@ class FFmpegPCMPipeStream(AudioSource):
     def cleanup(self):
         print("cleanup")
         if hasattr(self, 'process'):
-            proc = self.process
+            proc = self.ffmpeg
             if proc is None:
                 return
 
@@ -47,4 +50,8 @@ class FFmpegPCMPipeStream(AudioSource):
             if proc.poll() is None:
                 proc.communicate()
             else:
-                self.process = None
+                self.ffmpeg = None
+
+    def stop(self):
+        if self.streamtask is not None:
+            self.streamtask.cancel()
