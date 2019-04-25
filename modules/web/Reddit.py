@@ -29,5 +29,6 @@ class Reddit(commands.Cog):
                 await message.channel.send(embed=discord.Embed.from_dict(em))
                 await message.delete()
 
+
 def setup(bot):
     bot.add_cog(Reddit(bot))

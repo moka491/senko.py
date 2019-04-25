@@ -1,7 +1,7 @@
 import discord, platform
 from discord.ext import commands
 from uptime import uptime, boottime
-from util.globals import app_version
+from core.util.globals import app_version
 
 
 class Info(commands.Cog):

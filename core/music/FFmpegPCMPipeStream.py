@@ -34,7 +34,6 @@ class FFmpegPCMPipeStream(AudioSource):
 
     def read(self):
         ret = self.ffmpeg.stdout.read(OpusEncoder.FRAME_SIZE)
-        print(len(ret))
         if len(ret) != OpusEncoder.FRAME_SIZE:
             return b''
         return ret

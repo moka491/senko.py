@@ -1,7 +1,7 @@
 import traceback
 from discord.ext import commands
 from discord.ext.commands import ExtensionError
-from util.globals import module_dir
+from core.util.globals import module_dir
 
 
 class Modules(commands.Cog):

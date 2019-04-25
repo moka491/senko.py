@@ -1,6 +1,6 @@
 from discord.ext import commands
 import discord
-from voice.FFmpegPCMPipeStream import FFmpegPCMPipeStream
+from core.music.FFmpegPCMPipeStream import FFmpegPCMPipeStream
 
 
 class Music(commands.Cog):
