@@ -1,7 +1,7 @@
 FROM python:3.7-stretch
 
 # Install ffmpeg for music functionality
-RUN apt install ffmpeg
+RUN apt-get update && apt-get -y install ffmpeg
 
 # Setup project and install dependencies
 WORKDIR /usr/src/app
