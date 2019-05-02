@@ -10,6 +10,7 @@ class Modules(commands.Cog):
         self.bot = bot
 
     @commands.group(name='module')
+    @commands.is_owner()
     async def module_group(self, ctx):
         if ctx.invoked_subcommand is None:
             await ctx.send('Invalid Module command.')
