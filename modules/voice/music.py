@@ -1,6 +1,8 @@
 from discord.ext import commands
 import discord
-from core.music.FFmpegPCMPipeStream import FFmpegPCMPipeStream
+
+from core.music.Mixer import Mixer
+from core.music.Player import Player
 
 
 class Music(commands.Cog):
@@ -9,37 +11,28 @@ class Music(commands.Cog):
         self.stream = None
 
     @commands.command()
-    async def play(self, ctx, *, query):
-        """Plays a file from the local filesystem"""
-        self.stream = FFmpegPCMPipeStream(query, self.bot)
-        # todo: await aiohttp stream here
+    async def playtest(self, ctx):
+        player = Player("https://sync.moe/s/QQ8cjPgfNAF6445/download")
+        self.mixer = Mixer()
+        self.mixer.setPlayer(player)
 
-        source = discord.PCMVolumeTransformer(self.stream)
-        ctx.voice_client.play(source)
-
-        await ctx.send('Now playing: {}'.format(query))
+        async with ctx.typing():
+            await player.await_download()
+            ctx.voice_client.play(self.mixer)
 
     @commands.command()
-    async def volume(self, ctx, volume: int):
-        """Changes the player's volume"""
-
-        if ctx.voice_client is None:
-            return await ctx.send("Not connected to a voice channel.")
-
-        ctx.voice_client.source.volume = volume / 100
-        await ctx.send("Changed volume to {}%".format(volume))
+    async def next(self, ctx):
+        newplayer = Player("https://sync.moe/s/QQ8cjPgfNAF6445/download")
+        await newplayer.await_download()
+        self.mixer.crossfadeTo(newplayer)
 
     @commands.command()
     async def stop(self, ctx):
-
         if self.stream is not None:
             self.stream.stop()
             self.stream = None
 
-        """Stops and disconnects the bot from voice"""
-        await ctx.voice_client.disconnect()
-
-    @play.before_invoke
+    @playtest.before_invoke
     async def ensure_voice(self, ctx):
         if ctx.voice_client is None:
             if ctx.author.voice:

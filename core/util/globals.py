@@ -1,2 +1,2 @@
-app_version = '0.0.7'
+app_version = '0.1.0'
 module_dir = 'modules'
