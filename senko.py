@@ -2,13 +2,16 @@ import discord
 
 import config, glob, os
 from discord.ext import commands
-from core.util.globals import module_dir
+
+# Create tmp dir if not exists
+if not os.path.isdir('tmp'):
+    os.makedirs('tmp')
 
 # Initialize bot
 bot = commands.Bot(command_prefix='$', description='Divine messenger fox! To your service!')
 
 # Load up modules from modules folder
-for filename in glob.iglob(module_dir+'/**/*.py', recursive=True):
+for filename in glob.iglob('modules/**/*.py', recursive=True):
     module = filename.replace('.py', '').replace(os.sep, '.')
     print(f'Loaded module {module}')
     bot.load_extension(module)

@@ -1,8 +1,9 @@
+import subprocess
+import time
+
 import discord, platform
 from discord.ext import commands
-from uptime import uptime, boottime
-from core.util.globals import app_version
-
+from uptime import uptime
 
 class Info(commands.Cog):
 
@@ -12,7 +13,12 @@ class Info(commands.Cog):
     @commands.command(name='stats')
     async def show_stats(self, ctx):
 
-        appinfo = await self.bot.application_info()
+        app_info = await self.bot.application_info()
+
+        try:
+            app_version = subprocess.check_output(["git", "describe", "--tags"]).decode("utf-8").strip()
+        except subprocess.CalledProcessError:
+            app_version = 'n/a'
 
         em = {
             "title": "About Senko-san",
@@ -26,14 +32,14 @@ class Info(commands.Cog):
                 {
                     "name": "Owner",
                     "value": "User: {}#{}\nId: {}".format(
-                        appinfo.owner.name,
-                        appinfo.owner.discriminator,
-                        appinfo.owner.id),
+                        app_info.owner.name,
+                        app_info.owner.discriminator,
+                        app_info.owner.id),
                     "inline": True
                 },
                 {
                     "name": "Versions",
-                    "value": "Senko-san v{}\ndiscord.py v{}\npython {}".format(
+                    "value": "Senko-san {}\ndiscord.py v{}\npython {}".format(
                         app_version,
                         discord.__version__,
                         platform.python_version()),
@@ -41,46 +47,15 @@ class Info(commands.Cog):
                 },
                 {
                     "name": "System Info",
-                    "value": "OS: {}\nUptime: {}\nBoottime: {}".format(
+                    "value": "OS: {}\nUptime: {}".format(
                         platform.platform(),
-                        self.seconds_to_time_str(uptime()),
-                        boottime().strftime('%B %d %Y %H:%M:%S'))
+                        time.strftime("%H:%M:%S", time.gmtime(uptime()))
+                    )
                 }
             ]
         }
 
         await ctx.send(embed=discord.Embed.from_dict(em))
-
-    def seconds_to_time_str(self, sec):
-
-        if not sec:
-            return ''
-
-        total_seconds = float(sec)
-
-        # Helper vars:
-        MINUTE = 60
-        HOUR = MINUTE * 60
-        DAY = HOUR * 24
-
-        # Get the days, hours, etc:
-        days = int(total_seconds / DAY)
-        hours = int((total_seconds % DAY) / HOUR)
-        minutes = int((total_seconds % HOUR) / MINUTE)
-        seconds = int(total_seconds % MINUTE)
-
-        # Build up the pretty string (like this: "N days, N hours, N minutes, N seconds")
-        string = ""
-        if days > 0:
-            string += str(days) + " " + (days == 1 and "day" or "days") + ", "
-        if len(string) > 0 or hours > 0:
-            string += str(hours) + " " + (hours == 1 and "hour" or "hours") + ", "
-        if len(string) > 0 or minutes > 0:
-            string += str(minutes) + " " + (minutes == 1 and "minute" or "minutes") + ", "
-        string += str(seconds) + " " + (seconds == 1 and "second" or "seconds")
-
-        return string
-
 
 def setup(bot):
     bot.add_cog(Info(bot))

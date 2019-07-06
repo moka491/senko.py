@@ -1,8 +1,6 @@
 import traceback
 from discord.ext import commands
 from discord.ext.commands import ExtensionError
-from core.util.globals import module_dir
-
 
 class Modules(commands.Cog):
 
@@ -18,7 +16,7 @@ class Modules(commands.Cog):
     @module_group.command(name='load')
     async def module_load(self, ctx, name: str):
         try:
-            self.bot.load_extension(module_dir+"."+name)
+            self.bot.load_extension("modules."+name)
 
             await ctx.send(f'Loaded module {name}')
             print(f'Loaded module {name}')
@@ -31,7 +29,7 @@ class Modules(commands.Cog):
     @module_group.command(name='unload')
     async def module_unload(self, ctx, name: str):
         try:
-            self.bot.unload_extension(module_dir+"."+name)
+            self.bot.unload_extension("modules."+name)
 
             await ctx.send(f'Unloaded module {name}')
             print(f'Loaded module {name}')
@@ -44,7 +42,7 @@ class Modules(commands.Cog):
     @module_group.command(name='reload')
     async def module_reload(self, ctx, name: str):
         try:
-            self.bot.reload_extension(module_dir+"."+name)
+            self.bot.reload_extension("modules."+name)
 
             await ctx.send(f'Reloaded module {name}')
             print(f'Reloaded module {name}')

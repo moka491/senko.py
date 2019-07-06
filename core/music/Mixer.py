@@ -3,41 +3,41 @@ from discord import AudioSource
 from discord.opus import Encoder as OpusEncoder
 
 class Mixer(AudioSource):
-    player = None
-    newPlayer = None
-    fadeCur = 0.0
-    fadeTime = 3.0
+    source = None
+    new_source = None
+    fade_cur = 0.0
+    fade_time = 2.0
 
-    def setPlayer(self, player):
-        self.player = player
+    def set_source(self, source):
+        self.source = source
 
-    def getPlayer(self):
-        return self.player
+    def get_source(self):
+        return self.source
 
-    def crossfadeTo(self, player):
-        self.newPlayer = player
+    def crossfade_to(self, source):
+        self.new_source = source
 
     def read(self):
         # If fading but fadeTime is over, finish fading process
-        if self.fadeCur > self.fadeTime:
-            self.player = self.newPlayer
-            self.newPlayer = None
-            self.fadeCur = 0.0
+        if self.fade_cur > self.fade_time:
+            self.source = self.new_source
+            self.new_source = None
+            self.fade_cur = 0.0
 
-        # If not fading, or fading ended, read from the current player
-        if not self.newPlayer:
-            return self.player.read()
+        # If not fading, or fading ended, read from the current source
+        if not self.new_source:
+            return self.source.read()
 
         # Else, for fading, update time
-        self.fadeCur += (OpusEncoder.FRAME_LENGTH / 1000)
+        self.fade_cur += (OpusEncoder.FRAME_LENGTH / 1000)
 
-        # Calculate volumes for both players (0 <= x <= 1)
-        volNew = self.fadeCur / self.fadeTime
-        volCur = 1 - volNew
+        # Calculate volumes for both sources (0 <= x <= 1)
+        vol_new = self.fade_cur / self.fade_time
+        vol_cur = 1 - vol_new
 
         # Apply volumes
-        segmentCur = audioop.mul(self.player.read(), 2, volCur)
-        segmentNew = audioop.mul(self.newPlayer.read(), 2, volNew)
+        segment_cur = audioop.mul(self.source.read(), 2, vol_cur)
+        segment_new = audioop.mul(self.new_source.read(), 2, vol_new)
 
         # Return sum of both segments
-        return audioop.add(segmentCur, segmentNew, 2)
+        return audioop.add(segment_cur, segment_new, 2)
