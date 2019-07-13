@@ -1,44 +1,57 @@
 import asyncio
 import atexit
+import subprocess
 import uuid
 import os
-import time
-import ffmpeg
+from asyncio.subprocess import PIPE, STDOUT
+
 from discord import AudioSource
 from discord.opus import Encoder as OpusEncoder
-from core.music.Song import Song
-
+from core.music.MediaFile import MediaFile
+import config
 
 class Source(AudioSource):
+    command_line = "ffmpeg -y -i '{}' -f s16le -ac 2 -ar 48000 {} 2>&1 | grep Duration " #\
+                   #"| sed 's/Duration: \(.*\), start/\1/g'"
+
     ffmpeg = None
 
     song = None
     file = None
     filename = None
 
-    def __init__(self, song: Song):
+    def __init__(self, song: MediaFile):
         self.song = song
 
-        if song.download_file is not None:
+    async def prepare(self):
+
+        if self.song.download_file is not None:
             # Set previously used filename
-            self.filename = song.download_file
+            self.filename = self.song.download_file
         else:
             # Create random file for song stream
             self.filename = "tmp/" + str(uuid.uuid4())
 
-            # Create ffmpeg instance to write to this file
-            self.ffmpeg = (
-                ffmpeg
-                    .input(song.url)
-                    .output(self.filename, format='s16le', ac=2, ar='48k')
-                    .run_async(overwrite_output=True)
-            )
+            # If a stream url is set inside the media file, use it. Otherwise request a fresh stream url
+            stream_url = self.song.stream_url or await self.song.provider.request_stream_url(self.song)
 
-    async def download_started(self):
-        print(self.song)
+            print(stream_url)
+
+            # Create ffmpeg instance to write to this file
+            self.ffmpeg = subprocess.Popen(self.command_line.format(stream_url, self.filename), shell=True)
+
+        num_tries = 0
+        num_tries_allowed = config.download_wait_time * 5
 
         # async wait for file to be created by ffmpeg
         while not os.path.exists(self.filename):
+
+            # If number of checks has passed config value, return false to stop waiting
+            num_tries += 1
+            if (num_tries) > num_tries_allowed:
+                return False
+
+            # Await next check in .2 seconds
             await asyncio.sleep(0.2)
 
         # Open file for reading
@@ -47,7 +60,8 @@ class Source(AudioSource):
         # Store filename in song so that next time, it doesn't have to be downloaded
         self.song.download_file = self.filename
 
-        print("file written!")
+        # Return true for successful file check
+        return True
 
     def read(self):
         ret = self.file.read(OpusEncoder.FRAME_SIZE)

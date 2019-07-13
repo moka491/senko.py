@@ -3,9 +3,17 @@ from discord import AudioSource
 from discord.opus import Encoder as OpusEncoder
 
 class Mixer(AudioSource):
+
+    # the Source that is usually played from
     source = None
+
+    # the Source to crossfade to. Setting it will initiate crossfading
     new_source = None
+
+    # Current progress of fading, in seconds
     fade_cur = 0.0
+
+    # Total time it should take to fade over
     fade_time = 2.0
 
     def set_source(self, source):

@@ -22,9 +22,4 @@ async def on_ready():
     print(f'Logged in as: {bot.user.name} - {bot.user.id}')
     await bot.change_presence(activity=discord.Activity(name=bot.command_prefix+'help', type=discord.ActivityType.listening))
 
-
-@bot.event
-async def on_message_edit(old, new):
-    await bot.process_commands(new)
-
 bot.run(config.token, bot=True, reconnect=True)

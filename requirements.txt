@@ -1,4 +1,3 @@
-ffmpeg-python
 youtube-dl
 discord.py[voice]
 uptime

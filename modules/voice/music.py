@@ -1,34 +1,56 @@
-import random
+from enum import Enum
 
 from discord.ext import commands
-from discord.ext.commands import Cog
 
+from core.music.MediaFile import MediaFile
 from core.music.Mixer import Mixer
-from core.music.Song import Song
 from core.music.Source import Source
+from core.music.providers.direct import DirectProvider
+from core.music.providers.nicovideo import NicovideoProvider
+from core.music.providers.youtube import YoutubeProvider
+
+
+class PlayStatus(Enum):
+    STOPPED = 0
+    PLAYING = 1
+    PAUSED = 2
+
+
+class RepeatMode(Enum):
+    NORMAL = 0
+    REPEAT_ONE = 1
+    REPEAT_ALL = 2
+
+providers = {
+    "youtube": YoutubeProvider(),
+    "nicovideo": NicovideoProvider(),
+    "direct": DirectProvider()
+}
 
 class Music(commands.Cog):
-    songs = [
-        Song('https://sync.moe/s/QQ8cjPgfNAF6445/download'),
-        Song('https://sync.moe/s/AdwxpE49NbonSFD/download'),
-        Song('https://sync.moe/s/gsT2Nnmdqg8kb5k/download'),
-        Song(
-            'https://r6---sn-4g5edne6.googlevideo.com/videoplayback?expire=1562293783&ei=t2EeXbntFY__gQfluYrIAQ&ip=37.201.225.174&id=o-AHFluL3RfF7n1ubKDjbby8liiIxJfITipUmwk4D0DBHW&itag=18&source=youtube&requiressl=yes&mm=31%2C26&mn=sn-4g5edne6%2Csn-h0jeened&ms=au%2Conr&mv=m&mvi=5&pl=17&initcwndbps=940000&mime=video%2Fmp4&gir=yes&clen=31669431&ratebypass=yes&dur=312.470&lmt=1540270903207451&mt=1562272125&fvip=4&c=WEB&txp=5531432&sparams=expire%2Cei%2Cip%2Cid%2Citag%2Csource%2Crequiressl%2Cmime%2Cgir%2Cclen%2Cratebypass%2Cdur%2Clmt&sig=ALgxI2wwRQIhALrDGz780PxchqHJ--adLZd3iHBOzPmhVOF-pmaX5muiAiA-I0NanH48z1II2sV_aqyzHSRJC_FhoYuqBogwIPjm4A%3D%3D&lsparams=mm%2Cmn%2Cms%2Cmv%2Cmvi%2Cpl%2Cinitcwndbps&lsig=AHylml4wRAIgexzybinDLdwtdMgVABxPgxlsO-vGAw5VolNvklzAhNoCIHO4LHMWNnvru19ts4291IOrRlHOIBJO7iWybh4ARGEb')
+    # A List of MediaFile objects, initially empty
+    song_queue = [
+        MediaFile('https://www.youtube.com/watch?v=9SKA6PmcLuQ', provider=providers['youtube']),
     ]
+
+    current_song_index = 0
+    play_status = PlayStatus.STOPPED
+    repeat_mode = RepeatMode.REPEAT_ALL
+
+    prepare_task = None
+    mixer = Mixer()
 
     def __init__(self, bot):
         self.bot = bot
-        self.mixer = Mixer()
-
-    def get_source(self):
-        return self.mixer
 
     @commands.command()
     async def play(self, ctx):
-        source = Source(random.choice(self.songs))
-        self.mixer.set_source(source)
+        self.play_status = PlayStatus.PLAYING
 
-        await source.download_started()
+        source = Source(self.song_queue[self.current_song_index])
+        await source.prepare()
+        # todo: get song duration here and start task
+        self.mixer.set_source(source)
         ctx.voice_client.play(self.mixer)
 
     @commands.command()
@@ -41,24 +63,28 @@ class Music(commands.Cog):
 
     @commands.command()
     async def stop(self, ctx):
-        pass
+        self._stop()
+        ctx.voice_client.stop()
 
     @commands.command()
     async def next(self, ctx):
-        source = Source(random.choice(self.songs))
-        await source.download_started()
-        self.mixer.crossfade_to(source)
+        await self._play_next()
 
     @commands.command()
     async def previous(self, ctx):
         pass
 
     @commands.command()
+    async def remove(self, ctx):
+        pass
+
+    @commands.command()
+    async def move(self, ctx):
+        pass
+
+    @commands.command()
     async def shuffle(self, ctx):
-        """ Toggles shuffling on and off.
-        'play' and 'next track' commands will then pick a random song,
-        instead of the next one in the queue.
-        """
+        """ Shuffles the queue and places the current song first, if one is playing"""
         pass
 
     @commands.command()
@@ -66,6 +92,28 @@ class Music(commands.Cog):
         """ Toggles between repetition of one song, of the whole queue, and disabling repeat
         :param ctx: discord.py context
         """
+        pass
+
+    @commands.command()
+    async def queue(self, ctx):
+        """ Shows the current queue"""
+        pass
+
+    @commands.command()
+    async def search(self, ctx, provider_arg: str = None, *, arg):
+        """ Searches the given search string on the platform of choice (default Youtube)"""
+
+        # Select search provider
+        if provider_arg in ['nnd', 'nv', 'nicovideo']:
+            provider = providers['nicovideo']
+        else:
+            # Default: Youtube
+            provider = providers['youtube']
+
+        # Do actual search
+        results = await provider.search("searchterm")
+
+        # todo: show and paginate results
         pass
 
     # Command to leave voice
@@ -80,6 +128,52 @@ class Music(commands.Cog):
                 await ctx.author.voice.channel.connect()
             else:
                 await ctx.send("You are not connected to a voice channel.")
+
+    #####################################################################
+
+    async def _play_next(self):
+        """ Crossfades to the next song, or stops if there's no next song to play.
+            This takes into account the RepeatMode, thus it could also switch to the same song again."""
+        if self.repeat_mode is RepeatMode.REPEAT_ONE:
+            next_song_index = self.current_song_index
+        elif self.current_song_index == len(self.song_queue) - 1:
+            next_song_index = 0
+
+            if self.repeat_mode is not RepeatMode.REPEAT_ALL:
+                await self._stop()
+                return
+        else:
+            next_song_index = self.current_song_index + 1
+
+        source = Source(self.song_queue[next_song_index])
+        if await source.prepare():
+            self.mixer.crossfade_to(source)
+            self.current_song_index = next_song_index
+        else:
+            print("error changing to that file")
+            await self._stop()
+            return
+
+    def _stop(self):
+        self.play_status = PlayStatus.STOPPED
+        self.current_song_index = 0
+        self.mixer.set_source(None)
+
+    """async def task_prepare_next_song(self, wait_duration):
+        # Sleep for the time it takes for the song to finish
+        await asyncio.sleep(wait_duration)
+
+        print("preparing next song!")
+
+        source = Source(random.choice(self.song_queue))
+        if await source.download_started():
+            self.mixer.crossfade_to(source)
+
+        else:
+            print("error changing to that file")
+
+        self.prepare_task = asyncio.create_task(self.task_prepare_next_song(wait_duration))"""
+
 
 def setup(bot):
     bot.add_cog(Music(bot))
