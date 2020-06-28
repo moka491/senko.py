@@ -1,34 +1,50 @@
 import re, discord
 from discord.ext import commands
 
-
 class Reddit(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.regex_sub = re.compile(r'(^|[^\w])(/r/[a-zA-Z0-9_]+)/?($|[\s.,!?])')
-        self.regex_user = re.compile(r'(^|[^\w])(/u/[a-zA-Z0-9_]+)/?($|[\s.,!?])')
+        self.regex_sub = re.compile(r'(^|\s)/?(r/\w+)/?')
+        self.regex_user = re.compile(r'(^|\s)/?(u/\w+)/?')
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        msg = message.content
-
         if message.author != self.bot.user:
-            if self.regex_sub.search(msg):
-                msg = self.regex_sub.sub(r'\1[\2](https://reddit.com\2)\3', msg)
-            if self.regex_user.search(msg):
-                msg = self.regex_user.sub(r'\1[\2](https://reddit.com\2)\3', msg)
+            sub_matches = self.regex_sub.findall(message.content)
+            user_matches = self.regex_user.findall(message.content)
 
-            if msg != message.content:
+            if sub_matches:
+                sub_set = unique(map(lambda match: match[1], sub_matches))
+                msg = '\n'.join(map(lambda sub: "[/{0}](https://reddit.com/{0})".format(sub), sub_set))
+
                 em = {
-                    "color": 0x519cff,
-                    "title": message.author.name + ' said:',
+                    "color": 0x3498db,
+                    "title": 'Mentioned Subreddits',
                     "description": msg
                 }
 
                 await message.channel.send(embed=discord.Embed.from_dict(em))
-                await message.delete()
+
+            if user_matches:
+                user_set = unique(map(lambda match: match[1], user_matches))
+                msg =  '\n'.join(map(lambda user: "[/{0}](https://reddit.com/{0})".format(user), user_set))
+
+                em = {
+                    "color": 0x3498db,
+                    "title": 'Mentioned Users',
+                    "description": msg
+                }
+
+                await message.channel.send(embed=discord.Embed.from_dict(em))
+
+
+def unique(sequence):
+    seen = set()
+    return [x for x in sequence if not (x in seen or seen.add(x))]
 
 
 def setup(bot):
     bot.add_cog(Reddit(bot))
+
+
